@@ -9,6 +9,7 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using System.Web;
 using System.Web.Mvc;
+using Microsoft.Owin;
 
 namespace IdentitySample.Controllers
 {
@@ -18,8 +19,24 @@ namespace IdentitySample.Controllers
         public AccountController()
         {
         }
+        public class ApplicationSignInManager : SignInManager<ApplicationUser, string>
+        {
+            public ApplicationSignInManager(ApplicationUserManager userManager, IAuthenticationManager authenticationManager)
+                : base(userManager, authenticationManager)
+            {
+            }
 
-        public AccountController(ApplicationUserManager userManager, ApplicationSignInManager signInManager )
+            public override Task<ClaimsIdentity> CreateUserIdentityAsync(ApplicationUser user)
+            {
+                return user.GenerateUserIdentityAsync((ApplicationUserManager)UserManager);
+            }
+
+            public static ApplicationSignInManager Create(IdentityFactoryOptions<ApplicationSignInManager> options, IOwinContext context)
+            {
+                return new ApplicationSignInManager(context.GetUserManager<ApplicationUserManager>(), context.Authentication);
+            }
+        }
+        public AccountController(ApplicationUserManager userManager, ApplicationSignInManager signInManager)
         {
             UserManager = userManager;
             SignInManager = signInManager;
@@ -41,9 +58,9 @@ namespace IdentitySample.Controllers
         //
         // GET: /Account/Login
         [AllowAnonymous]
-        public ActionResult Login(string returnUrl)
+        public ActionResult Login(string returnUrls)
         {
-            ViewBag.ReturnUrl = returnUrl;
+            ViewBag.ReturnUrls = returnUrls;
             return View();
         }
 
@@ -65,6 +82,32 @@ namespace IdentitySample.Controllers
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> Login(LoginViewModel model, string returnUrl)
         {
+            //if (!ModelState.IsValid)
+            //{
+            //    if (User.Identity.IsAuthenticated)
+            //    {
+            //        if (User.IsInRole("Customer"))
+            //        {
+            //            MigrateShoppingCart(model.Email);
+
+            //            if (Url.IsLocalUrl(returnUrl) && returnUrl.Length > 1
+            //    && returnUrl.StartsWith("/")
+            //    && !returnUrl.StartsWith("//") &&
+            //    !returnUrl.StartsWith("/\\"))
+            //            {
+            //                return Redirect(returnUrl);
+            //            }
+            //            else
+            //            {
+            //                //Redirect to Home Page if not in Shopping Cart.
+            //                return RedirectToAction("Index", "Home");
+            //            }
+            //        }
+            //        ModelState.AddModelError("", "The user name or password provided is incorrect.");
+            //    }
+            //    // If we got this far, something failed, redisplay form
+            //    return View(model);
+            //}
             if (!ModelState.IsValid)
             {
                 return View(model);
@@ -145,23 +188,43 @@ namespace IdentitySample.Controllers
         [HttpPost]
         [AllowAnonymous]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> Register(RegisterViewModel model)
+        //[CaptchaValidator(
+        //PrivateKey = "6Ld6fyMUAAAAAFmNovvELB0-Ul0Z-9KRO7uE8EhM",
+        //ErrorMessage = "Invalid input captcha.",
+        //RequiredMessage = "The captcha field is required.")]
+        public async Task<ActionResult> Register(RegisterViewModel model, bool captchaValid)
         {
             if (ModelState.IsValid)
             {
-                var user = new ApplicationUser { UserName = model.Email, Email = model.Email };
+                var user = new ApplicationUser
+                {
+                    UserName = model.Email,
+                    Email = model.Email
+                };
+                user.FirstName = model.FirstName;
+                user.LastName = model.LastName;
+                user.Telephone = model.Telephone;
+
                 var result = await UserManager.CreateAsync(user, model.Password);
                 if (result.Succeeded)
                 {
                     var code = await UserManager.GenerateEmailConfirmationTokenAsync(user.Id);
-                    var callbackUrl = Url.Action("ConfirmEmail", "Account", new { userId = user.Id, code = code }, protocol: Request.Url.Scheme);
-                    await UserManager.SendEmailAsync(user.Id, "Confirm your account", "Please confirm your account by clicking this link: <a href=\"" + callbackUrl + "\">link</a>");
-                    ViewBag.Link = callbackUrl;
+                    var callbackUrl = Url.Action(
+                        "ConfirmEmail",
+                        "Account",
+                        new { userId = user.Id, code = code },
+                        protocol: Request.Url.Scheme);
+
+                    await UserManager.SendEmailAsync(
+                        user.Id,
+                        "Confirm your account",
+                        "Please confirm your account by clicking this link: <a href=\"" + callbackUrl + "\">link</a>");
+
+                    //ViewBag.Link = callbackUrl;
                     return View("DisplayEmail");
                 }
                 AddErrors(result);
             }
-
             // If we got this far, something failed, redisplay form
             return View(model);
         }
@@ -349,6 +412,8 @@ namespace IdentitySample.Controllers
         {
             if (User.Identity.IsAuthenticated)
             {
+                //ADDED MIGRATE CART
+                //MigrateShoppingCart(model.Email);
                 return RedirectToAction("Index", "Manage");
             }
 
@@ -359,7 +424,7 @@ namespace IdentitySample.Controllers
                 if (info == null)
                 {
                     return View("ExternalLoginFailure");
-                }
+                }//Return the name of the Customer instead of the EMAIL
                 var user = new ApplicationUser { UserName = model.Email, Email = model.Email };
                 var result = await UserManager.CreateAsync(user);
                 if (result.Succeeded)
@@ -367,6 +432,8 @@ namespace IdentitySample.Controllers
                     result = await UserManager.AddLoginAsync(user.Id, info.Login);
                     if (result.Succeeded)
                     {
+                        //AddMigrate Cart ER 
+                        //MigrateShoppingCart(model.Email);
                         await SignInManager.SignInAsync(user, isPersistent: false, rememberBrowser: false);
                         return RedirectToLocal(returnUrl);
                     }
@@ -453,6 +520,15 @@ namespace IdentitySample.Controllers
                 context.HttpContext.GetOwinContext().Authentication.Challenge(properties, LoginProvider);
             }
         }
+
+        //private void MigrateShoppingCart(string Email)
+        //{
+        //    // Associate shopping cart items with logged-in user
+        //    var cart = Cart.GetCart(this.HttpContext);
+
+        //    cart.MigrateCart(Email);
+        //    Session[Cart.CartSessionKey] = Email;
+        //}
         #endregion
     }
 }

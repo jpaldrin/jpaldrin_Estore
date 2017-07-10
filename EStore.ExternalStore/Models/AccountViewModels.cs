@@ -61,6 +61,33 @@ namespace IdentitySample.Models
 
     public class RegisterViewModel
     {
+        [Display(Name = "First Name")]
+        public string FirstName { get; set; }
+        //1
+        [Required]
+        [Display(Name = "Last Name")]
+        public string LastName { get; set; }
+        //2
+        //[Required]
+        //[Display(Name = "Address")]
+        //public string Address { get; set; }
+        ////3
+        //[Required]
+        //[Display(Name = "City")]
+        //public string City { get; set; }
+        ////4
+        //[Required]
+        //[Display(Name = "State")]
+        //public string State { get; set; }
+        ////5
+        //[Required]
+        //[Display(Name = "Postal Code")]
+        //public string PostalCode { get; set; }
+        //6
+        [Required]
+        [Display(Name = "Telephone")]
+        public string Telephone { get; set; }
+
         [Required]
         [EmailAddress]
         [Display(Name = "Email")]
@@ -76,6 +103,8 @@ namespace IdentitySample.Models
         [Display(Name = "Confirm password")]
         [Compare("Password", ErrorMessage = "The password and confirmation password do not match.")]
         public string ConfirmPassword { get; set; }
+
+
     }
 
     public class ResetPasswordViewModel
