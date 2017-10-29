@@ -19,6 +19,7 @@ namespace EStore.Data
         public virtual DbSet<Orders> Orders { get; set; }
         public virtual DbSet<Products> Products { get; set; }
         public virtual DbSet<TaxTables> TaxTables { get; set; }
+        public virtual DbSet<SEOModels> SEOModels { get; set; }
 
         protected override void OnModelCreating(DbModelBuilder modelBuilder)
         {
